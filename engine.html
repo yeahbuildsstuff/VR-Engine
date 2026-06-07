@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <style>
+        body, canvas { width: 100%; height: 100%; margin: 0; padding: 0; display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById("renderCanvas");
+    const engine = new BABYLON.Engine(canvas, true);
+
+    const createScene = async () => {
+        const scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color4(1, 1, 1, 1);
+
+        const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+        light.groundColor = new BABYLON.Color3(0.86, 0.86, 0.86);
+        light.specular = new BABYLON.Color3(0, 0, 0);
+
+        // Floor: Pure white, no specular
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 50, height: 50}, scene);
+        const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+        groundMat.diffuseColor = new BABYLON.Color3(1, 1, 1);
+        groundMat.specularColor = new BABYLON.Color3(0, 0, 0);
+        ground.material = groundMat;
+
+        const xr = await scene.createDefaultXRExperienceAsync({
+            floorMeshes: [ground],
+            disableDefaultHandMesh: true
+        });
+
+        xr.input.onControllerAddedObservable.add((controller) => {
+            // Forcefully clear the controller's mesh so the built-in model is destroyed
+            controller.onMeshLoadedObservable.add((mesh) => {
+                mesh.isVisible = false;
+                mesh.dispose();
+            });
+            
+            controller.onMotionControllerInitObservable.add((motionController) => {
+                // Diameter 0.125 (Half size), Color #eeeeee
+                const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 0.125}, scene);
+                const mat = new BABYLON.StandardMaterial("sphereMat", scene);
+                mat.diffuseColor = new BABYLON.Color3(0.933, 0.933, 0.933);
+                mat.specularColor = new BABYLON.Color3(0, 0, 0);
+                sphere.material = mat;
+                
+                sphere.setParent(controller.grip);
+            });
+        });
+
+        return scene;
+    };
+
+    createScene().then((scene) => {
+        engine.runRenderLoop(() => { scene.render(); });
+    });
+</script>
+</body>
+</html>
